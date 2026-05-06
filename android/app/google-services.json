@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "329838166206",
+    "project_id": "logistigo-ad3d9",
+    "storage_bucket": "logistigo-ad3d9.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:329838166206:android:620aaf741986cd08d85eef",
+        "android_client_info": {
+          "package_name": "com.example.logistigo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyClfXN9NVAOi7TIN_dmO2fdiKYwk5ot2ss"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
