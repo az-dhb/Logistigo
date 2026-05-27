@@ -207,9 +207,9 @@ class DashboardPage extends StatelessWidget {
             StreamBuilder<QuerySnapshot>(
               stream: FirebaseFirestore.instance
                   .collection('commands')
-                  .where('clientid', isEqualTo: uid) // ✅ FIXED
-                  .where('status', isEqualTo: "pending") // ✅ FIXED
-                  .limit(1)
+                  .where('clientId', isEqualTo: uid) // ✅ FIXED
+                  .where('status', isEqualTo: "accepted") // ✅ FIXED
+                  .limit(10)
                   .snapshots(),
               builder: (context, snapshot) {
                 if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {

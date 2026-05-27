@@ -28,6 +28,7 @@ class _ManagerDashboardPageState
   int completedCommands = 0;
 
   List<FlSpot> chartData = [];
+  List<String> products = [];
 
   int _selectedIndex = 0;
 
@@ -51,7 +52,13 @@ class _ManagerDashboardPageState
           .get();
 
       if (doc.exists) {
-        userName = doc["username"] ?? "User";
+        final data = doc.data();
+        userName = data?["username"] ?? "User";
+
+        final rawProducts = data?["products"];
+        if (rawProducts is List) {
+          products = rawProducts.map((e) => e.toString()).toList();
+        }
       }
       setState(() {});
     }
@@ -73,7 +80,7 @@ class _ManagerDashboardPageState
       String status = data["status"] ?? "pending";
 
       if (status == "pending") pending++;
-      if (status == "completed") completed++;
+      if (status == "done") completed++;
 
       Timestamp? timestamp = data["timestamp"];
       if (timestamp != null) {
@@ -107,6 +114,7 @@ class _ManagerDashboardPageState
     );
   }
 
+  /// ── ADD PRODUCT ──────────────────────────────────────────────
   void _showAddProductDialog() {
     final controller = TextEditingController();
 
@@ -114,17 +122,27 @@ class _ManagerDashboardPageState
       context: context,
       builder: (context) {
         return AlertDialog(
+          shape:
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
           title: const Text("Add Product"),
           content: TextField(
             controller: controller,
-            decoration:
-            const InputDecoration(hintText: "Product name"),
+            decoration: const InputDecoration(
+              hintText: "Product name",
+              border: OutlineInputBorder(),
+            ),
           ),
           actions: [
             TextButton(
                 onPressed: () => Navigator.pop(context),
                 child: const Text("Cancel")),
-            TextButton(
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF97B2D1),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(10)),
+              ),
               onPressed: () async {
                 final uid =
                     FirebaseAuth.instance.currentUser!.uid;
@@ -139,6 +157,12 @@ class _ManagerDashboardPageState
                   "products": FieldValue.arrayUnion([product])
                 });
 
+                setState(() {
+                  if (!products.contains(product)) {
+                    products.add(product);
+                  }
+                });
+
                 Navigator.pop(context);
               },
               child: const Text("Add"),
@@ -149,9 +173,177 @@ class _ManagerDashboardPageState
     );
   }
 
-  Widget _dashboardBody() {
+  /// ── DELETE PRODUCT ───────────────────────────────────────────
+  Future<void> _deleteProduct(String product) async {
     final uid = FirebaseAuth.instance.currentUser!.uid;
 
+    await FirebaseFirestore.instance
+        .collection('users')
+        .doc(uid)
+        .update({
+      "products": FieldValue.arrayRemove([product])
+    });
+
+    setState(() {
+      products.remove(product);
+    });
+  }
+
+  /// ── PRODUCTS SECTION ─────────────────────────────────────────
+  Widget _buildProductsSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const SizedBox(height: 25),
+
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text(
+              "Organisation Products",
+              style: TextStyle(
+                  fontSize: 20, fontWeight: FontWeight.bold),
+            ),
+            GestureDetector(
+              onTap: _showAddProductDialog,
+              child: Container(
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 14, vertical: 8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF97B2D1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: const Row(
+                  children: [
+                    Icon(Icons.add, color: Colors.white, size: 16),
+                    SizedBox(width: 4),
+                    Text("Add",
+                        style: TextStyle(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600)),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+
+        const SizedBox(height: 12),
+
+        products.isEmpty
+            ? Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(
+              vertical: 30, horizontal: 16),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(15),
+          ),
+          child: const Column(
+            children: [
+              Icon(Icons.inventory_2_outlined,
+                  size: 40, color: Colors.grey),
+              SizedBox(height: 8),
+              Text(
+                "No products added yet",
+                style: TextStyle(color: Colors.grey),
+              ),
+            ],
+          ),
+        )
+            : ListView.separated(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: products.length,
+          separatorBuilder: (_, __) =>
+          const SizedBox(height: 10),
+          itemBuilder: (context, index) {
+            final product = products[index];
+            return Container(
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(15),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 38,
+                    height: 38,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF97B2D1)
+                          .withOpacity(0.15),
+                      borderRadius:
+                      BorderRadius.circular(10),
+                    ),
+                    child: const Icon(
+                      Icons.inventory_2_outlined,
+                      color: Color(0xFF97B2D1),
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Text(
+                      product,
+                      style: const TextStyle(
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                  IconButton(
+                    onPressed: () =>
+                        _confirmDeleteProduct(product),
+                    icon: const Icon(Icons.delete_outline,
+                        color: Colors.redAccent, size: 22),
+                    tooltip: "Delete product",
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  /// ── CONFIRM DELETE DIALOG ────────────────────────────────────
+  void _confirmDeleteProduct(String product) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16)),
+        title: const Text("Delete Product"),
+        content: Text(
+            'Are you sure you want to delete "$product"?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text("Cancel"),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () async {
+              Navigator.pop(context);
+              await _deleteProduct(product);
+            },
+            child: const Text("Delete"),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// ── DASHBOARD BODY ───────────────────────────────────────────
+  Widget _dashboardBody() {
     return SingleChildScrollView(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 120),
       child: Column(
@@ -188,7 +380,6 @@ class _ManagerDashboardPageState
                         const TextStyle(color: Colors.grey)),
                   ],
                 ),
-
                 IconButton(
                   onPressed: _logout,
                   icon: const Icon(Icons.logout),
@@ -235,6 +426,9 @@ class _ManagerDashboardPageState
           _buildStatCard("Total Commands", totalCommands),
           _buildStatCard("Pending Commands", pendingCommands),
           _buildStatCard("Complete Commands", completedCommands),
+
+          /// ── PRODUCTS SECTION ──────────────────────────────
+          _buildProductsSection(),
         ],
       ),
     );
@@ -257,7 +451,6 @@ class _ManagerDashboardPageState
       extendBody: true,
       body: SafeArea(child: pages[_selectedIndex]),
 
-      /// 🔥 FIXED FLOATING NAVBAR
       bottomNavigationBar: Padding(
         padding: EdgeInsets.only(
           left: 20,
@@ -326,17 +519,14 @@ class _ManagerDashboardPageState
         borderRadius: BorderRadius.circular(15),
       ),
       child: Row(
-        mainAxisAlignment:
-        MainAxisAlignment.spaceBetween,
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(title,
               style: const TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w600)),
+                  fontSize: 16, fontWeight: FontWeight.w600)),
           Text(value.toString(),
               style: const TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold)),
+                  fontSize: 18, fontWeight: FontWeight.bold)),
         ],
       ),
     );

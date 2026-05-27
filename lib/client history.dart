@@ -83,6 +83,8 @@ class ClientHistoryPage extends StatelessWidget {
                         statusColor = Colors.green;
                       } else if (status == "Canceled") {
                         statusColor = Colors.red;
+                      } else if (status == "Refused" || status == "refused") {
+                        statusColor = Colors.orange;
                       } else {
                         statusColor = Colors.black;
                       }
